@@ -486,7 +486,7 @@ Requires **Python 3.13** (Windows PowerShell shown; use `source .venv/bin/activa
 macOS/Linux).
 
 ```powershell
-git clone https://github.com/<your-username>/SwishAI.git
+git clone https://github.com/eeerrriiiccccc/SwishAI.git
 cd SwishAI
 python -m venv .venv
 .venv\Scripts\Activate.ps1
