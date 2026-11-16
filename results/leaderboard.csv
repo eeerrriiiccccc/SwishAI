@@ -1,0 +1,38 @@
+model,split,rows,MAE,RMSE,BIAS,R2,MAE bench (<10 ppg),MAE mid (10-20),MAE star (20+)
+League average (same for everyone),valid,25688,7.0464,8.7962,0.0807,-0.0001,6.2405,6.327,13.1923
+Last 3 games avg,valid,25688,5.0668,6.6853,-0.0409,0.4223,4.1807,5.9419,7.274
+Last 5 games avg,valid,25688,4.8698,6.4085,-0.0542,0.4692,4.0524,5.6705,6.9231
+Last 10 games avg,valid,25688,4.7453,6.2142,-0.0883,0.5009,3.9856,5.4651,6.7202
+Last 30 games avg,valid,25688,4.7498,6.2022,-0.1798,0.5028,4.0485,5.4138,6.5741
+Season avg so far,valid,25688,4.7219,6.2201,-0.5134,0.4999,3.9749,5.4547,6.5958
+Minutes x points-per-minute,valid,25688,4.6956,6.1485,-0.1266,0.5114,3.9585,5.4094,6.5699
+Tuned weighted avg (EWMA),valid,25688,4.6575,6.0962,-0.1233,0.5197,3.9282,5.356,6.533
+Linear: 1 feature (EWMA),valid,25688,4.6732,6.085,-0.0422,0.5214,3.9621,5.3533,6.5044
+Linear: 12 core features,valid,25688,4.5643,5.9398,0.0821,0.544,3.8285,5.2901,6.3988
+Linear: all 60 features,valid,25688,4.5157,5.8926,0.0029,0.5512,3.7665,5.2543,6.3845
+Linear (gradient descent): all 60,valid,25688,4.5206,5.8966,0.022,0.5506,3.7696,5.2633,6.3881
+Ridge: all 60 + interactions,valid,25688,4.5073,5.8872,-0.017,0.552,3.7546,5.2552,6.3693
+"Normal, spread grows with mean (median)",valid,25688,4.4961,5.8908,-0.0164,0.5515,3.7419,5.2481,6.3549
+"Negative Binomial, player-specific spread (median)",valid,25688,4.4846,6.0018,-1.1197,0.5344,3.7093,5.2625,6.3819
+Tree from scratch (depth 8),valid,25688,4.6245,6.034,0.0591,0.5294,3.8463,5.375,6.6115
+sklearn tree (depth 8) - check,valid,25688,4.6227,6.0322,0.051,0.5297,3.8433,5.3808,6.5948
+Boosting from scratch (150 trees),valid,25688,4.5246,5.8935,0.1245,0.5511,3.7736,5.2661,6.3954
+Random forest (200 trees),valid,25688,4.5285,5.9022,0.0519,0.5497,3.7802,5.2712,6.3823
+LightGBM (squared error),valid,25688,4.5241,5.8898,0.1102,0.5516,3.7746,5.2686,6.3787
+LightGBM (absolute error),valid,25688,4.4697,5.9103,-0.4986,0.5485,3.693,5.2509,6.3654
+Hybrid: linear + LightGBM (abs. error),valid,25688,4.462,5.8971,-0.4523,0.5505,3.6854,5.2455,6.351
+"Simulation, anchored (median)",valid,25688,4.4647,5.9398,-0.748,0.544,3.6893,5.24,6.3691
+"NN from scratch (NumPy, 64-32)",valid,25688,4.6189,5.9666,0.3554,0.5399,3.8972,5.3447,6.3801
+"NN PyTorch, wide & deep (squared error)",valid,25688,4.5129,5.8924,0.026,0.5512,3.7531,5.283,6.3514
+"NN PyTorch, wide & deep (abs. error)",valid,25688,4.4952,5.9052,-0.2616,0.5493,3.7294,5.2622,6.3729
+NN + player embeddings (abs. error),valid,25688,4.4789,5.9201,-0.5362,0.547,3.6979,5.2676,6.3769
+"NN + embeddings, predicts mean & sigma",valid,25688,4.53,5.8928,0.0422,0.5512,3.7787,5.2779,6.3849
+NN ensemble: 5 nets + embeddings (abs. error),valid,25688,4.4666,5.9006,-0.5143,0.55,3.689,5.2511,6.3572
+Blend: hybrid + NN ensemble + simulation,valid,25688,4.4577,5.8938,-0.5067,0.551,3.6809,5.2422,6.345
+League average (same for everyone),test,26053,6.9174,8.6518,0.0676,-0.0001,6.2272,6.1386,13.1702
+Tuned weighted avg (EWMA),test,26053,4.6333,6.0566,-0.0644,0.5099,3.9188,5.2943,6.3411
+Ridge: all 60 + interactions,test,26053,4.4844,5.8525,0.1448,0.5424,3.724,5.1998,6.2633
+Hybrid: linear + LightGBM (abs. error),test,26053,4.4262,5.8566,-0.4099,0.5417,3.6475,5.1646,6.2294
+NN ensemble: 5 nets + embeddings (abs. error),test,26053,4.4206,5.8498,-0.4781,0.5428,3.649,5.1489,6.2189
+"Simulation, anchored (median)",test,26053,4.4304,5.8913,-0.6088,0.5363,3.6529,5.1618,6.2498
+Blend: hybrid + NN ensemble + simulation,test,26053,4.4189,5.8493,-0.4571,0.5429,3.6427,5.1538,6.2201
