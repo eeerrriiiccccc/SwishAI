@@ -58,7 +58,7 @@ def fetch_current(force=False):
     ages.to_parquet(CURRENT_DIR / "player_ages.parquet", index=False)
     time.sleep(1)
     sched = scheduleleaguev2.ScheduleLeagueV2(season=CURRENT_SEASON, timeout=60).get_data_frames()[0]
-    sched[["gameDateEst", "gameStatus", "homeTeam_teamTricode", "awayTeam_teamTricode"]].to_parquet(
+    sched[["gameId", "gameDateEst", "gameDateTimeUTC", "gameStatus", "homeTeam_teamTricode", "awayTeam_teamTricode"]].to_parquet(
         CURRENT_DIR / "schedule.parquet", index=False)
     stamp.write_text(str(Date.today()))
 

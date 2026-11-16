@@ -1,0 +1,62 @@
+{
+  "policy": "weights_tier_offset",
+  "weights": {
+    "hybrid": 0.5401,
+    "nn": 0.4,
+    "sim": 0.0599
+  },
+  "offset": 0.0,
+  "model_version": "v2: 68 features, trained on 2021-22 to 2025-26",
+  "model_cutoff": "2026-06-30",
+  "policy_reason": "Replaying 3,591 predictions day by day, 'weights + tier + offset' beat the fixed weights by 0.0055 points per game (uncertainty +/-0.0023). The gain is bigger than its uncertainty, so it is switched on.",
+  "tier_offsets": {
+    "bench": -0.034,
+    "mid": -0.297,
+    "star": 0.047
+  },
+  "suggested_weights": {
+    "hybrid": 0.5401,
+    "nn": 0.4,
+    "sim": 0.0599
+  },
+  "suggested_offset": -0.155,
+  "suggested_tier_offsets": {
+    "bench": -0.034,
+    "mid": -0.297,
+    "star": 0.047
+  },
+  "walk_forward": [
+    {
+      "policy": "Fixed weights 0.5/0.4/0.1",
+      "MAE": 4.382,
+      "vs fixed": 0.0,
+      "SE": 0.0
+    },
+    {
+      "policy": "Adaptive weights",
+      "MAE": 4.3816,
+      "vs fixed": -0.0004,
+      "SE": 0.0006
+    },
+    {
+      "policy": "Adaptive weights + one bias fix",
+      "MAE": 4.377,
+      "vs fixed": -0.005,
+      "SE": 0.0035
+    },
+    {
+      "policy": "Adaptive weights + bias fix per tier",
+      "MAE": 4.3765,
+      "vs fixed": -0.0055,
+      "SE": 0.0023
+    },
+    {
+      "policy": "Adaptive, NO shrinkage (for comparison)",
+      "MAE": 4.3775,
+      "vs fixed": -0.0045,
+      "SE": 0.0072
+    }
+  ],
+  "n_graded_at_update": 4173,
+  "updated_on": "2026-11-15"
+}

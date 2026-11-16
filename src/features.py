@@ -108,8 +108,11 @@ def build_team_table(team):
 
     # Which game of the season is this for the team (0, 1, 2, ...)?
     t["TEAM_GAME_NUM"] = t.groupby(["TEAM_ID", "SEASON"]).cumcount()
+    # Days off for the TEAM before this game (the schedule is known in advance).
+    t["TEAM_REST_DAYS"] = (t.groupby("TEAM_ID")["GAME_DATE"].diff().dt.days - 1).clip(upper=10).fillna(10)
 
-    keep = ["GAME_ID", "TEAM_ID", "OPP_TEAM_ID", "TEAM_GAME_NUM", "TEAM_PLAYS", "TEAM_MIN"] + list(rename.values()) + ["NET_RTG"]
+    keep = (["GAME_ID", "TEAM_ID", "OPP_TEAM_ID", "TEAM_GAME_NUM", "TEAM_REST_DAYS", "TEAM_PLAYS", "TEAM_MIN"]
+            + list(rename.values()) + ["NET_RTG"])
     return t[keep]
 
 
@@ -170,7 +173,7 @@ def build_features(player_raw, team_raw, ages):
     p = p.sort_values(["PLAYER_ID", "GAME_DATE"]).reset_index(drop=True)
 
     team_table = build_team_table(team_raw)
-    p = p.merge(team_table[["GAME_ID", "TEAM_ID", "OPP_TEAM_ID", "TEAM_GAME_NUM", "TEAM_PLAYS", "TEAM_MIN"]],
+    p = p.merge(team_table[["GAME_ID", "TEAM_ID", "OPP_TEAM_ID", "TEAM_GAME_NUM", "TEAM_REST_DAYS", "TEAM_PLAYS", "TEAM_MIN"]],
                 on=["GAME_ID", "TEAM_ID"], how="left")
     p = p.sort_values(["PLAYER_ID", "GAME_DATE"]).reset_index(drop=True)
 
@@ -232,6 +235,29 @@ def build_features(player_raw, team_raw, ages):
     p["GAMES_WITH_TEAM"] = p.groupby(["PLAYER_ID", "TEAM_ID"]).cumcount()       # small = new (trade/signing)
     p["GAMES_PLAYED_BEFORE"] = p.groupby("PLAYER_ID").cumcount()                # how much history we have
 
+    # --- 3b. Season timing, role changes and returns (version 2, added after the daily review) ----
+    # The review of 2026-27 found the model too high early in the season: teams use deeper
+    # rotations in the first weeks, and the model had no way to know "it is early" or
+    # "this long rest was HIS absence, not the team's schedule". These 8 features cut the
+    # error on that season's unseen games from 4.445 to 4.415 (and 4.458 -> 4.451 on 2024-25).
+    # Two league-wide "scoring climate" features were also tried and dropped: no extra gain.
+    p["SEASON_GAME_NUM"] = p.groupby(season).cumcount()                        # his games so far THIS season
+    p["MIN_LAST"] = p.groupby("PLAYER_ID")["MIN"].shift(1)                     # minutes in his previous game
+    p["MIN_TREND"] = p["MIN_L3"] - p["MIN_L10"]                                # role growing (+) or shrinking (-)
+    # Rest beyond the team's own days off = games HE sat out (injury, rest, coach's decision).
+    p["PLAYER_EXTRA_REST"] = (p["REST_DAYS"] - p["TEAM_REST_DAYS"]).clip(lower=0, upper=10)
+    # Games played since his last absence of 3+ team games (0 = first game back; 10 = long ago / never).
+    came_back = p["TEAM_GAMES_MISSED"] >= 3
+    spell = came_back.groupby(p["PLAYER_ID"]).cumsum()
+    p["GAMES_SINCE_RETURN"] = p.groupby(["PLAYER_ID", spell]).cumcount().clip(upper=10).where(spell > 0, 10)
+    # How many players his team used per game lately (deep rotation = fewer minutes each).
+    used = (p.groupby(["TEAM_ID", "GAME_ID"]).agg(n_used=("PLAYER_ID", "size"), date=("GAME_DATE", "first"))
+            .reset_index().sort_values(["TEAM_ID", "date"]))
+    used["TEAM_PLAYERS_USED_L5"] = used.groupby("TEAM_ID")["n_used"].transform(
+        lambda x: x.shift(1).rolling(5, min_periods=1).mean())
+    p = p.merge(used[["TEAM_ID", "GAME_ID", "TEAM_PLAYERS_USED_L5"]], on=["TEAM_ID", "GAME_ID"], how="left")
+    p = p.sort_values(["PLAYER_ID", "GAME_DATE"]).reset_index(drop=True)
+
     # --- 4. Age -----------------------------------------------------------------
     p = p.merge(ages.drop_duplicates(["PLAYER_ID", "SEASON"]), on=["PLAYER_ID", "SEASON"], how="left")
 
@@ -274,6 +300,9 @@ FEATURES = (
        "OPP_DEF_RTG", "OPP_OFF_RTG", "OPP_PACE", "OPP_NET_RTG", "OPP_3PA_RATE_ALLOWED", "OPP_FTA_RATE_ALLOWED",
        "NET_RTG_GAP", "ABS_NET_RTG_GAP",
        "TEAMMATES_OUT_PTS", "TEAMMATES_OUT_MIN", "OPP_PLAYERS_OUT_PTS", "OPP_PLAYERS_OUT_MIN"]
+    # Version 2 (see section 3b in build_features):
+    + ["SEASON_GAME_NUM", "TEAM_GAME_NUM", "MIN_LAST", "MIN_TREND", "TEAM_REST_DAYS", "PLAYER_EXTRA_REST",
+       "GAMES_SINCE_RETURN", "TEAM_PLAYERS_USED_L5"]
 )
 
 # Inputs for the Phase 8 simulation only (kept out of FEATURES so earlier models are unchanged).

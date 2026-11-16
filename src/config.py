@@ -26,3 +26,6 @@ TEST_SEASONS = ["2025-26"]                         # touched only for final scor
 CURRENT_SEASON = "2026-27"                         # the season in progress
 CURRENT_DIR = RAW_DIR / "current"                  # re-downloaded daily, never used for training
 MODELS_DIR = PROJECT_ROOT / "models"               # saved trained models
+
+# --- Daily tracking loop (src/daily.py) ---------------------------------------
+TRACK_DIR = PROJECT_ROOT / "tracking"              # predictions, grades, decisions, daily report

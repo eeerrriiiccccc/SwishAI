@@ -33,7 +33,7 @@ $ python -m src.predict "Dylan Harper" --line 18.5
 3. [Project structure](#project-structure)
 4. [Phase 0: Getting the data](#phase-0-getting-the-data)
 5. [Phase 1: Exploratory analysis](#phase-1-exploratory-analysis)
-6. [Phase 2: Feature engineering](#phase-2-feature-engineering-60-pre-game-features)
+6. [Phase 2: Feature engineering](#phase-2-feature-engineering-68-pre-game-features)
 7. [The no-leakage test](#the-no-leakage-test)
 8. [Phase 3: The evaluation harness](#phase-3-the-evaluation-harness)
 9. [Phase 4: Baselines](#phase-4-baselines)
@@ -43,6 +43,7 @@ $ python -m src.predict "Dylan Harper" --line 18.5
 13. [Phase 8: Monte Carlo game simulation](#phase-8-monte-carlo-game-simulation)
 14. [Phase 9: Neural networks](#phase-9-neural-networks)
 15. [Phase 10: Blend, final test, live forecasts](#phase-10-blend-final-test-and-live-forecasts)
+    - [Phase 11: The daily loop](#phase-11-the-daily-loop-predict-grade-learn)
 16. [Using the predictor](#using-the-predictor)
 17. [Installation and running everything](#installation-and-running-everything)
 18. [Key lessons and limitations](#key-lessons-and-limitations)
@@ -76,6 +77,25 @@ prediction was off by.
 - Validation and test scores are close, so the model was not overfit to the season used for
   tuning.
 
+### Version 2 (November 2026): 8 features added by the daily review
+
+The table above is **version 1** (60 features), scored once on the locked 2025-26 season.
+The daily loop (Phase 11) then graded the first four weeks of 2026-27 and found the model
+too high for three groups. The cause: teams use deeper rotations early in a season
+(11.2 players a game versus 10.6 later), and the model had no input for season timing, a
+player's own absences or rotation depth. Eight features were added (marked v2 in Phase 2).
+
+| Check | Version 1 | Version 2 | Change |
+|---|---|---|---|
+| Validation 2024-25, blend MAE | 4.458 | 4.451 | -0.007 (uncertainty 0.002) |
+| Validation, first 4 weeks only | 4.492 | 4.478 | -0.014 |
+| 2026-27 so far, 4,173 unseen games | 4.445 | 4.415 | -0.030 (uncertainty 0.006) |
+
+Version 2 has **not** been scored on the locked 2025-26 test season; the features were chosen
+on validation and confirmed on 2026-27 only. Two league-wide "scoring climate" features were
+also tried and dropped because they added nothing. The version 1 model and its prediction
+record are kept in `models/` and `tracking/archive/`.
+
 ---
 
 ## How it works (overview)
@@ -84,7 +104,7 @@ prediction was off by.
  stats.nba.com ──► fetch_data.py ──► data/raw/*.parquet  (131K player-games, 5 seasons)
                                            │
                                            ▼
-                                    features.py  ──►  60 pre-game features per player-game
+                                    features.py  ──►  68 pre-game features per player-game
                                            │          (tested by tests/test_no_leakage.py)
                                            ▼
                                     evaluate.py  ──►  one scoring method for every model
@@ -124,10 +144,12 @@ SwishAI/
 ├── src/
 │   ├── config.py              # seasons, train/valid/test split, folder paths
 │   ├── fetch_data.py          # Phase 0: download game logs from stats.nba.com
-│   ├── features.py            # Phase 2: build the 60 leakage-free features
+│   ├── features.py            # Phase 2: build the 68 leakage-free features
 │   ├── evaluate.py            # Phase 3: shared scoring harness + leaderboard
 │   ├── final_test.py          # Phase 10: one-time test on 2025-26
 │   ├── predict.py             # Phase 10: command-line forecaster
+│   ├── daily.py               # Phase 11: automatic daily predict / grade / learn loop
+│   ├── review.py              # Phase 11: scoreboard, adaptive weights, error diagnosis, report
 │   └── models/
 │       ├── baselines.py       # Phase 4: averages, minutes x rate, tuned EWMA
 │       ├── linear.py          # Phase 5: linear/ridge regression from scratch
@@ -140,6 +162,7 @@ SwishAI/
 │   └── test_no_leakage.py     # proves no feature looks at its own game or the future
 ├── notebooks/                 # 01_eda … 06_neural_networks: charts and walkthroughs
 ├── results/                   # leaderboard.csv, final_test.csv, charts
+├── tracking/                  # live record: predictions.csv, decisions.csv, REPORT.md
 ├── data/                      # (not in git) raw + processed data, re-created by the scripts
 ├── models/                    # (not in git) saved trained blend
 └── requirements.txt
@@ -178,7 +201,7 @@ Before modeling, the data was explored to learn what drives scoring:
 
 ---
 
-## Phase 2: Feature engineering (60 pre-game features)
+## Phase 2: Feature engineering (68 pre-game features)
 **File:** `src/features.py` → output `data/processed/features.parquet`
 
 This turns raw logs into one table: **one row per player per game**, with features (what we
@@ -202,6 +225,9 @@ could know before tip-off) and the target `PTS`. Every rolling stat is computed 
 | **Opponent** | `OPP_DEF_RTG`, `OPP_OFF_RTG`, `OPP_PACE`, `OPP_NET_RTG`, `OPP_3PA_RATE_ALLOWED`, `OPP_FTA_RATE_ALLOWED` | How good the defense is and what it gives up |
 | **Blowout risk** | `NET_RTG_GAP`, `ABS_NET_RTG_GAP` | A big gap in strength makes it likely starters sit in the 4th quarter |
 | **Who's missing** | `TEAMMATES_OUT_PTS/MIN`, `OPP_PLAYERS_OUT_PTS/MIN` | Points and minutes of regular players sitting out tonight, on both teams |
+| **Season timing** (v2) | `SEASON_GAME_NUM`, `TEAM_GAME_NUM` | How far into the season we are: early on, averages still reflect last season and rotations are deeper |
+| **Role changes** (v2) | `MIN_LAST`, `MIN_TREND`, `TEAM_PLAYERS_USED_L5` | Minutes in his last game, whether his minutes are rising or falling, and how many players his team uses |
+| **His own absences** (v2) | `TEAM_REST_DAYS`, `PLAYER_EXTRA_REST`, `GAMES_SINCE_RETURN` | Separates the team's days off from games he sat out, and counts games since he came back |
 
 **How a few of these are built:**
 - **Team ratings** use possessions estimated as `FGA + 0.44·FTA − OREB + TOV` (averaged over
@@ -228,7 +254,7 @@ This test proves the golden rule holds:
 2. Pick a random date and **scramble everything that happened on or after it**: every
    box-score stat for players *and* teams is replaced with random numbers.
 3. Rebuild the features.
-4. For games **on** that date, all 66 columns (60 features + 6 simulation inputs) must be
+4. For games **on** that date, all 74 columns (68 features + 6 simulation inputs) must be
    **exactly the same**. If one changed, it was peeking at its own game or the future. The
    target `PTS` *should* change, which shows the scramble really happened.
 
@@ -440,6 +466,52 @@ How a forecast is made:
 
 ---
 
+## Phase 11: The daily loop (predict, grade, learn)
+**Files:** `src/daily.py`, `src/review.py` -> output in `tracking/`
+
+SwishAI now runs by itself. A Windows scheduled task ("SwishAI Daily") starts
+`python -m src.daily` at logon and every 3 hours. Each run is safe to repeat and does six things:
+
+1. **Download** this season's box scores, the schedule and ESPN's public injury report.
+2. **Grade** every earlier prediction whose game has finished.
+3. **Fill in** games that finished while the computer was off. These are predicted after the
+   fact but only from pre-game data, and are marked `backfill`, never mixed up with live picks.
+4. **Learn** (`src/review.py`): compare the models, test the blend weights, find the reasons
+   for the misses.
+5. **Predict** every player expected to play on the next game day, before tip-off.
+6. **Report** to [`tracking/REPORT.md`](tracking/REPORT.md) with the reasoning for each action.
+
+**Who is predicted?** Everyone expected to play with 5+ games of history (150-250 players on
+a full night), not a hand-picked few. It costs nothing extra, and telling a real 0.3-point
+lean from luck takes roughly 1,500 graded games: a week of everyone, or months of ten stars.
+
+**Who is expected to play?** A player who played his team's last game plays the next one 86%
+of the time; one who missed it only 37% (measured on 2025-26). So the lineup rule is: played
+the last game, and not listed as out on the injury report.
+
+**What the review works out:**
+
+| Question | How it is answered |
+|---|---|
+| Which model is better or worse? | Every model is scored on the same games; a model is only called better or worse when the gap is larger than its uncertainty |
+| Should the blend weights change? | Recency-weighted search over all weight combinations, shrunk toward 0.5/0.4/0.1. It is only switched on if a day-by-day replay of the season shows it beating the fixed weights |
+| Why were we off? | Each miss is split exactly into **minutes** (played more/less than expected), **shot volume** and **shooting** (mostly luck) |
+| Where do we lean the same way? | The models aim for the median, so a fair prediction is beaten 50% of the time. Groups far from 50% (beyond chance) are flagged |
+| What next? | Small, reversible changes (blend weights, one bias offset or one per scoring tier) are applied automatically and logged in `tracking/decisions.csv`. Bigger ones (retraining, new features) are recommended and wait for a go-ahead |
+
+**Files in `tracking/`:** `predictions.csv` (every model's guess and the result, one row per
+player per game), `decisions.csv` (every automatic change and why), `state.json` (weights in
+use), `REPORT.md` (latest report).
+
+```powershell
+python -m src.daily              # run now (skips if nothing is new)
+python -m src.daily --force      # redo every step
+python -m src.daily --retrain    # retrain on all games so far (when the report recommends it)
+Unregister-ScheduledTask -TaskName "SwishAI Daily"   # stop the automatic runs
+```
+
+---
+
 ## Using the predictor
 
 ```powershell
@@ -524,7 +596,7 @@ nba_api, jupyter.
 
 **Lessons**
 1. **Features beat algorithms.** Linear regression, boosted trees and neural nets all landed
-   within about 0.05 points of each other. The 60 features did most of the work.
+   within about 0.05 points of each other. The features did most of the work.
 2. **Minutes and role are the hidden drivers.** Missing teammates add about 2 points for
    stars. Opponent defense matters surprisingly little.
 3. **Check assumptions against data.** The "obvious" Negative Binomial was too skewed. A
