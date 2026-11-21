@@ -1,62 +1,62 @@
 {
-  "policy": "weights_tier_offset",
+  "policy": "weights_offset",
   "weights": {
-    "hybrid": 0.5401,
-    "nn": 0.4,
-    "sim": 0.0599
+    "hybrid": 0.6065,
+    "nn": 0.3361,
+    "sim": 0.0574
   },
-  "offset": 0.0,
+  "offset": -0.113,
   "model_version": "v2: 68 features, trained on 2021-22 to 2025-26",
   "model_cutoff": "2026-06-30",
-  "policy_reason": "Replaying 3,591 predictions day by day, 'weights + tier + offset' beat the fixed weights by 0.0055 points per game (uncertainty +/-0.0023). The gain is bigger than its uncertainty, so it is switched on.",
+  "policy_reason": "Replaying 4,433 predictions day by day, 'weights + offset' beat the fixed weights by 0.0037 points per game (uncertainty +/-0.0030). The gain is bigger than its uncertainty, so it is switched on.",
   "tier_offsets": {
-    "bench": -0.034,
-    "mid": -0.297,
-    "star": 0.047
+    "bench": 0.0,
+    "mid": 0.0,
+    "star": 0.0
   },
   "suggested_weights": {
-    "hybrid": 0.5401,
-    "nn": 0.4,
-    "sim": 0.0599
+    "hybrid": 0.6065,
+    "nn": 0.3361,
+    "sim": 0.0574
   },
-  "suggested_offset": -0.155,
+  "suggested_offset": -0.113,
   "suggested_tier_offsets": {
-    "bench": -0.034,
-    "mid": -0.297,
-    "star": 0.047
+    "bench": -0.072,
+    "mid": -0.175,
+    "star": 0.077
   },
   "walk_forward": [
     {
       "policy": "Fixed weights 0.5/0.4/0.1",
-      "MAE": 4.382,
+      "MAE": 4.3627,
       "vs fixed": 0.0,
       "SE": 0.0
     },
     {
       "policy": "Adaptive weights",
-      "MAE": 4.3816,
-      "vs fixed": -0.0004,
-      "SE": 0.0006
+      "MAE": 4.3625,
+      "vs fixed": -0.0002,
+      "SE": 0.0005
     },
     {
       "policy": "Adaptive weights + one bias fix",
-      "MAE": 4.377,
-      "vs fixed": -0.005,
-      "SE": 0.0035
+      "MAE": 4.359,
+      "vs fixed": -0.0037,
+      "SE": 0.003
     },
     {
       "policy": "Adaptive weights + bias fix per tier",
-      "MAE": 4.3765,
-      "vs fixed": -0.0055,
-      "SE": 0.0023
+      "MAE": 4.359,
+      "vs fixed": -0.0037,
+      "SE": 0.0021
     },
     {
       "policy": "Adaptive, NO shrinkage (for comparison)",
-      "MAE": 4.3775,
-      "vs fixed": -0.0045,
-      "SE": 0.0072
+      "MAE": 4.36,
+      "vs fixed": -0.0026,
+      "SE": 0.006
     }
   ],
-  "n_graded_at_update": 4173,
-  "updated_on": "2026-11-15"
+  "n_graded_at_update": 5015,
+  "updated_on": "2026-11-21"
 }
