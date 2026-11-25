@@ -1,5 +1,10 @@
 # SwishAI 🏀
 
+![Python 3.13](https://img.shields.io/badge/python-3.13-3776AB)
+![PyTorch](https://img.shields.io/badge/PyTorch-neural%20nets-EE4C2C)
+![LightGBM](https://img.shields.io/badge/LightGBM-gradient%20boosting-2E8B57)
+![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
+
 **SwishAI predicts how many points an NBA player will score in his next game.**
 For any player it gives one predicted number, an 80% range, and probabilities such as
 "P(20+ points)" or "P(over 18.5)".
@@ -9,6 +14,17 @@ gradient boosting, a Monte Carlo game simulation and neural networks. The core
 algorithms (linear regression, decision trees, gradient boosting, and a neural network with
 backpropagation) are **written from scratch in NumPy** and checked against the standard
 libraries.
+
+**Highlights**
+- **Leakage-proof:** 68 pre-game features from 131K player-games, with a test that proves no
+  feature looks at its own game or the future.
+- **36% lower error** than guessing the league average on a locked held-out season
+  (6.92 → 4.42 points MAE), by blending LightGBM, a neural-net ensemble and a Monte Carlo
+  game simulation.
+- **Honest uncertainty:** 80% ranges contained 80.4% of real test games.
+- **Running live:** a daily pipeline predicts every player before tip-off, grades itself and
+  explains its misses. 5,561 graded 2026-27 predictions average **4.40 MAE**, in line with the
+  test season ([live report](tracking/REPORT.md)).
 
 ```text
 $ python -m src.predict "Dylan Harper" --line 18.5
@@ -76,6 +92,20 @@ prediction was off by.
   games.
 - Validation and test scores are close, so the model was not overfit to the season used for
   tuning.
+
+### Live season (2026-27, through November 24)
+
+The daily loop ([Phase 11](#phase-11-the-daily-loop-predict-grade-learn)) predicts every
+player before tip-off and grades the picks once the games finish. Games played before the
+loop started were filled in afterwards, using only pre-game data.
+
+| Predictions | Player-games | Blend MAE | No-ML weighted average | Inside the 80% range |
+|---|---|---|---|---|
+| All graded (live + filled in) | 5,561 | **4.40** | 4.82 | 83% |
+| Live only (made before tip-off) | 1,293 | **4.48** | 4.66 | 84% |
+
+Live picks score a little worse because they must also guess the lineup: 12% of players
+expected to play sat out. The latest numbers are in [`tracking/REPORT.md`](tracking/REPORT.md).
 
 ### Version 2 (November 2026): 8 features added by the daily review
 
@@ -604,11 +634,15 @@ nba_api, jupyter.
 4. **Neural nets are noisy.** Single runs varied by ±0.01 MAE, and averaging 5 was the most
    reliable improvement.
 5. **Blending different models helps**, because each one makes different mistakes.
+6. **Retraining is not free accuracy.** A mid-season retrain on 4,451 new games was checked
+   fairly (trained through Nov 17, tested on Nov 18-24) and gave no gain (4.302 vs 4.295 MAE),
+   because the new games were only ~3% of the training data. It was rolled back.
 
 **Limitations**
 - Single games are very noisy: even stars swing ±7 points, so no model gets close to zero
   error.
-- No injury feed: ruled-out players must be entered by hand.
+- Lineups are guessed: the daily loop reads ESPN's public injury report, but the
+  command-line forecaster needs ruled-out players entered by hand.
 - Rookies and fast-improving players lag, because the model trusts history.
 - It can't yet tell steady scorers (e.g. SGA) from streaky ones (e.g. Curry) as well as it
   should.
@@ -616,4 +650,5 @@ nba_api, jupyter.
 
 ---
 
-*Data from stats.nba.com via `nba_api`. This is an educational project, not betting advice.*
+*Data from stats.nba.com via `nba_api`. This is an educational project, not betting advice.
+Released under the [MIT License](LICENSE).*
