@@ -43,7 +43,11 @@ MIN_HISTORY = 500      # graded predictions needed before we even try to adapt
 HALF_LIFE = 3000       # a game this many predictions ago counts half as much (~3 weeks)
 K_WEIGHTS = 4000       # how strongly we trust the original weights (in "predictions worth")
 K_OFFSET = 1500        # same, for the bias correction
-RETRAIN_AFTER = 5000   # recommend retraining after this many new graded games
+# Recommend retraining after this many new graded games: roughly most of a season.
+# Was 5,000 until 2026-11-25, when a fair check (train through Nov 17, test on Nov 18-24)
+# showed retraining on 4,451 new games gave no gain (4.302 vs 4.295): that is only ~3% of the
+# ~130,000 training rows, so the model barely moves.
+RETRAIN_AFTER = 20000
 
 # Every weight combination in steps of 0.05 that adds up to 1 (231 of them).
 GRID = np.array([(a / 20, b / 20, (20 - a - b) / 20) for a in range(21) for b in range(21 - a)])
@@ -306,7 +310,7 @@ SEGMENTS = [
 
 ADVICE = {
     "Young players (22 or younger)": "Young players improve faster than their averages show. Next idea: retrain so their player fingerprints refresh.",
-    "New to our data (<60 games)": "Rookies and newcomers share the 'unknown player' fingerprint. Next idea: retrain to give them their own, and add draft-pick or prior-league info.",
+    "New to our data (<60 games)": "Rookies and newcomers share the 'unknown player' fingerprint. A mid-season retrain did not help them (tested 2026-11-25). Next idea: add draft-pick or prior-league info.",
     "Returning after missing 3+ team games": "Version 2 added 'games since return', 'player extra rest' and 'minutes last game' for exactly this. If the lean stays, the next idea is a minutes-limit signal from injury news.",
     "3+ days of rest": "Version 2 added 'player extra rest', which separates the team's days off from games he sat out. If the lean stays, the next idea is the reason for the absence from the injury report.",
     "Mid scorers (10-20 ppg)": "This season teams use deeper rotations, which costs mid scorers the most. Version 2 added rotation depth and season timing, which lowered the error but not the lean. The per-tier bias correction now works on it; it applies only part of the gap at first and more as games confirm it.",
@@ -495,11 +499,14 @@ def build_report(preds, state, decisions, info):
     new_games = int((graded["GAME_DATE"] > state.get("model_cutoff", "")).sum())
     if new_games >= RETRAIN_AFTER:
         recs.append(f"**Retrain the models** (`python -m src.daily --retrain`). *Why:* {new_games:,} games have been played "
-                    "since the models were last trained. Retraining lets them learn this season's patterns and gives "
-                    "rookies their own player fingerprint. It takes a few minutes and replaces the saved model, so it waits for you.")
+                    "since the models were last trained, enough to be a real share of the training data. Retraining lets "
+                    "them learn this season's patterns and gives rookies their own player fingerprint. It takes a few "
+                    "minutes and replaces the saved model, so it waits for you. Check it fairly before keeping it: train a "
+                    "copy without the last week and compare both models on that week.")
     else:
         recs.append(f"**Do not retrain yet.** *Why:* only {new_games:,} new games since the last training "
-                    f"(threshold {RETRAIN_AFTER:,}). Retraining on little new data changes the model without real gain.")
+                    f"(threshold {RETRAIN_AFTER:,}). On 2026-11-25 a retrain on about 4,500 new games was tested fairly "
+                    "and gave no gain (they are only ~3% of the training data), so it was rolled back.")
     for _, r in flagged.iterrows():
         direction = "too HIGH" if r["lean"] > 0 else "too LOW"
         part = max(["minutes", "volume", "shooting"], key=lambda k: abs(r[k]))
